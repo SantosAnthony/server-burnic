@@ -2,6 +2,8 @@ import cors from 'cors'
 import express from 'express'
 import 'dotenv/config'
 import { createClient } from '@supabase/supabase-js'
+import nodemailer from 'nodemailer'
+
 
 import Stripe from 'stripe'
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY)
@@ -15,12 +17,61 @@ app.use(express.static('public')) // Serve HTML, JS, CSS
 
 app.use(cors())
 
+
+
+
+app.post('/send', (req, res) => {
+  const data = req.body
+  const transport = nodemailer.createTransport({
+    host:'smtp.gmail.com',
+    port:465,
+    secure:true,
+    auth: {
+      user: 'anthonyssantos4@gmail.com',
+      pass: 'hsncrwbquttbnobk'
+    },
+    tls: {
+    rejectUnauthorized: false // <-- IGNORA certificado inválido
+  }
+
+  })
+  transport.sendMail({
+    from:'anthonyssantos4@gmail.com',
+    to:"gabrielaraujo05585@gmail.com",
+    subject:`Pedido ${data.nome}`,
+    html:`
+    <p>Nome: ${data.nome}</p>
+    <p>Bairro: ${data.bairro}</p>
+    <p>Cep: ${data.cep}</p>
+    <p>Rua: ${data.rua}</p>
+    <p>Numero: ${data.numero}</p>
+    <p>Frete: ${data.frete}</p>
+    <p>Cidade: ${data.Cidade}</p>,
+    `,
+    text:`
+    Nome: ${data.nome}
+    Bairro: ${data.bairro}
+    Cep: ${data.cep}
+    Rua: ${data.rua}
+    Numero: ${data.numero}
+    Frete: ${data.frete}    
+    Cidade: ${data.cidade}
+    `
+  })
+  .then((info) => {
+    console.log(info)
+  })
+  .catch((err) => {
+    console.log(err)
+  })
+})
+
 app.post('/payment', async (req, res) => {
   try {
     const { name, price } = req.body;
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+      payment_method_types: ['card','GooglePay', 'Pix', 'ApplePay'],
       line_items: [{
         price_data: {
           currency: 'brl',
@@ -40,41 +91,6 @@ app.post('/payment', async (req, res) => {
     res.status(500).send('Erro ao criar sessão de pagamento');
   }
 });
-
-app.post('/sendMail', async (req, res) => {
-  const dados = req.body;
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: 'gabrielaraujo05585@gmail.com',
-      pass: 'gabzinhogamer'
-    }
-  });
-
-  const html = `
-    <h2>🧾 Comprovante de Pedido</h2>
-    <p><strong>Produto:</strong> ${dados.produto}</p>
-    <p><strong>Valor Total:</strong> ${dados.total}</p>
-    <p><strong>Endereço:</strong> ${dados.rua}, ${dados.numero}, ${dados.bairro}, ${dados.cidade} - CEP ${dados.cep}</p>
-  `;
-
-  await transporter.sendMail({
-    from: dados.email || 'cliente@exemplo.com',
-    to: "gabrielaraujo05585@gmail.com",
-    subject: 'Comprovante de pedido - Burnic',
-    html
-  });
-
-  console.log('E-mail de comprovante enviado.');
-  res.sendStatus(200);
-});
-
-
-
-
-
-
 
 // Rota API: Retorna JSON dos produtos
 app.get('/produtos', async (req, res) => {
